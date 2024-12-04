@@ -5,6 +5,7 @@ from PIL import Image
 import tkinter as tk
 from tkinter import filedialog
 
+
 def image_stacker(folder_path):
     """
     Converts folders containing image stacks to a 3D array of the intensity values (image volume).
@@ -27,20 +28,22 @@ def image_stacker(folder_path):
 
     return image_volume
 
-def confusion_matrix_statistics(pos_label, ROI_mask_input, print_labels, ground_truth_folder_path=None, predicted_folder_path=None, ROI_mask_folder_path=None):
+
+def confusion_matrix_statistics(pos_label, roi_mask_input, print_labels, ground_truth_folder_path=None,
+                                predicted_folder_path=None, roi_mask_folder_path=None):
     """
     Allows you to select datasets to compare and calculate the confusion matrix of. Prints relevant statistics such as
     F1-score, precision, and recall.
     :param pos_label: The greyscale integer value considered to be positive, it should be equal to (2^(# of bits) - 1)
-    :param ROI_mask_input: Boolean value for if you have a specific region of interest to isolate
+    :param roi_mask_input: Boolean value for if you have a specific region of interest to isolate
     :param print_labels: Boolean value that determines if the printed outputs have labels or not
     :param ground_truth_folder_path: Optional variable to enter the path to the ground truth folder to skip browsing
     :param predicted_folder_path: Optional variable to enter the path to the predicted folder to skip browsing
-    :param ROI_mask_folder_path: Optional variable to enter the path to the ROI mask folder to skip browsing
+    :param roi_mask_folder_path: Optional variable to enter the path to the ROI mask folder to skip browsing
     :return: The confusion matrix
     """
 
-    if not isinstance(ROI_mask_input, bool):
+    if not isinstance(roi_mask_input, bool):
         raise ValueError("Mask parameter must be a boolean")
     if not isinstance(print_labels, bool):
         raise ValueError("print_labels parameter must be a boolean")
@@ -48,18 +51,18 @@ def confusion_matrix_statistics(pos_label, ROI_mask_input, print_labels, ground_
     root = tk.Tk()
     root.withdraw()  # Hide the root window
 
-    if ground_truth_folder_path == None:
+    if ground_truth_folder_path is None:
         ground_truth_folder_path = filedialog.askdirectory(title="Select the Ground Truth dataset folder")
     print("Ground truth folder:", ground_truth_folder_path)
 
-    if predicted_folder_path == None:
+    if predicted_folder_path is None:
         predicted_folder_path = filedialog.askdirectory(title="Select the Predicted dataset folder")
     print("Predicted folder:", predicted_folder_path)
 
-    if ROI_mask_input is True:
-        if ROI_mask_folder_path == None:
-            ROI_mask_folder_path = filedialog.askdirectory(title="Select the ROI mask dataset folder")
-        print("ROI Mask folder:", ROI_mask_folder_path)
+    if roi_mask_input is True:
+        if roi_mask_folder_path is None:
+            roi_mask_folder_path = filedialog.askdirectory(title="Select the ROI mask dataset folder")
+        print("ROI Mask folder:", roi_mask_folder_path)
 
     # Converts image stacks to image volumes
     ground_truth = image_stacker(ground_truth_folder_path)
@@ -69,21 +72,21 @@ def confusion_matrix_statistics(pos_label, ROI_mask_input, print_labels, ground_
         raise ValueError("Datasets are not the same size")
 
     # Flatten the images to 1D arrays for use with sklearn's f1_score function
-    if ROI_mask_input is True:
+    if roi_mask_input is True:
         # If there's a mask dataset, turn it into indexes of 0s and 1s
-        ROI_mask = image_stacker(ROI_mask_folder_path)
-        normalized_ROI_mask = ROI_mask/pos_label
-        ROI_size = np.sum(normalized_ROI_mask)
-        print("ROI voxels: ", ROI_size)
+        roi_mask = image_stacker(roi_mask_folder_path)
+        normalized_roi_mask = roi_mask/pos_label
+        roi_size = np.sum(normalized_roi_mask)
+        print("ROI voxels: ", roi_size)
 
-        if np.size(ground_truth) != np.size(ROI_mask):
+        if np.size(ground_truth) != np.size(roi_mask):
             raise ValueError("Mask dimensions don't match the datasets")
 
-        ROI_mask_flat = normalized_ROI_mask.flatten() == 1
+        roi_mask_flat = normalized_roi_mask.flatten() == 1
 
         # Only convert the 1 indexes to the flat form for comparison
-        ground_truth_flat = ground_truth.flatten()[ROI_mask_flat]
-        predicted_flat = predicted.flatten()[ROI_mask_flat]
+        ground_truth_flat = ground_truth.flatten()[roi_mask_flat]
+        predicted_flat = predicted.flatten()[roi_mask_flat]
     else:
         # If there is no mask, flatten the entire dataset
         ground_truth_flat = ground_truth.flatten()
@@ -108,7 +111,7 @@ def confusion_matrix_statistics(pos_label, ROI_mask_input, print_labels, ground_
     if abs(f1 - f1_val) >= 1e-6:
         raise ValueError('F1-Score positive labels do not match')
 
-    if print_labels == True:
+    if print_labels:
         print("\nTrue positive (TP):", tp)
         print("False negative (FN):", fn)
         print("False positive (FP):", fp)
@@ -126,10 +129,11 @@ def confusion_matrix_statistics(pos_label, ROI_mask_input, print_labels, ground_
         print(f1)
         print("\n")
 
-    stat_bloc = [tp,fn,fp,tn,precision,recall,f1]
+    stat_bloc = [tp, fn, fp, tn, precision, recall, f1]
     stat_bloc = np.transpose(stat_bloc)
 
     return stat_bloc
+
 
 """
 Leave the following folder paths equal to none the first time and then once you've selected the desired folders, 
@@ -137,7 +141,8 @@ they will be printed for you to copy into the ground truth and ROI mask variable
 next predicted folder each time. See the functions themselves for further documentation.
 """
 ground_truth_folder = None
-predicted_folder = None # Leave as None if you wish to be prompted to browse for the folder each time
+predicted_folder = None  # Leave as None if you wish to be prompted to browse for the folder each time
 ROI_mask_folder = None
 
-confusion_matrix_statistics(255,True,False, ground_truth_folder,predicted_folder, ROI_mask_folder)
+confusion_matrix_statistics(255, True, False, ground_truth_folder, predicted_folder,
+                            ROI_mask_folder)
