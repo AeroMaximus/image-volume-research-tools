@@ -1,9 +1,10 @@
-import numpy as np
 import os
-from sklearn.metrics import f1_score, confusion_matrix
-from PIL import Image
 import tkinter as tk
 from tkinter import filedialog
+
+import numpy as np
+from PIL import Image
+from sklearn.metrics import f1_score, confusion_matrix
 
 
 def image_stacker(folder_path):
