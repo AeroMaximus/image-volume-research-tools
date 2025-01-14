@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from PIL import Image
+from discrete_local_extrema_finder import local_extrema
 
 
 def image_list_sum(folder_path):
@@ -91,27 +92,54 @@ def average_subset_conversion(average_array, image_list, remove_index):
 
 
 # Main script
-folder_path = r"path to your dataset folder"
+folder_path = r"path to your dataset image stack"
 # Number of training images you want identified
-training_data_quantity = 1
+training_data_quantity = 10
 
 # Load images and calculate initial average
 img_tuple_list, img_sum = image_list_sum(folder_path)
 avg_img = average_image_calculator(img_sum, len(img_tuple_list))
+avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_tuple_list)
 
-# Iteratively remove the most different image
-for iteration in range(training_data_quantity):
-    avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_tuple_list)
-    most_different_index = avg_diff_sorted[0][0]
+avg_diff_array = np.empty(len(img_tuple_list), dtype=object)
 
-    if iteration == 0:
-        print("Initial scores for all images:")
-        for index, score in avg_diff:
-            print(f"Image index {index}: Difference score {score:.4f}")
-        print()
+print("Initial scores for all images:")
+for img_index, score in avg_diff:
+    img_num = img_index + 1
+    print(f"Image {img_num}: Average pixel difference {score:.4f}")
+    avg_diff_array[img_index] = score
+print()
 
-    print(f"Iteration {iteration + 1}: Removing image index {most_different_index + 1}, score {avg_diff_sorted[0][1]:.4f}")
-    avg_img, img_tuple_list = average_subset_conversion(avg_img, img_tuple_list, most_different_index)
+order = 1
+local_maxima, local_minima = local_extrema(avg_diff_array, order)
+
+while (local_maxima[0].size + local_minima[0].size) > training_data_quantity:
+    order += 1
+    local_maxima, local_minima = local_extrema(avg_diff_array, order)
+
+# Converts the indices (starting at 0) to slice numbers (starting from 1)
+local_maxima_slice_numbers = local_maxima[0] + 1
+local_minima_slice_numbers = local_minima[0] + 1
+
+print(f"Order required to select {training_data_quantity} training images: {order}")
+
+print(local_maxima_slice_numbers)
+
+print(local_minima_slice_numbers)
+
+# # Iteratively remove the most different image
+# for iteration in range(training_data_quantity):
+#     avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_tuple_list)
+#     most_different_index = avg_diff_sorted[0][0]
+#
+#     if iteration == 0:
+#         print("Initial scores for all images:")
+#         for index, score in avg_diff:
+#             print(f"Image index {index}: Difference score {score:.4f}")
+#         print()
+#
+#     print(f"Iteration {iteration + 1}: Removing image index {most_different_index + 1}, score {avg_diff_sorted[0][1]:.4f}")
+#     avg_img, img_tuple_list = average_subset_conversion(avg_img, img_tuple_list, most_different_index)
 
     # Next step should be to revise the code so that after the initial average pixel differences are calculated, graph
     # them against the slice number and check the local extrema
