@@ -47,7 +47,7 @@ def confusion_matrix_statistics(pos_label, roi_mask_input, print_labels, ground_
     if not isinstance(roi_mask_input, bool):
         raise ValueError("Mask parameter must be a boolean")
     if not isinstance(print_labels, bool):
-        raise ValueError("print_labels parameter must be a boolean")
+        raise ValueError("Print_labels parameter must be a boolean")
 
     root = tk.Tk()
     root.withdraw()  # Hide the root window
