@@ -9,40 +9,27 @@ from scipy.signal import argrelextrema
 
 def image_list_sum(folder_path):
     """
-    Saves a stack of grayscale images from a folder as a list of float numpy arrays and sums them into a single array.
+    Loads images, filters out non-image files, and calculates their sum.
     :param folder_path: path to the folder containing the images.
     :return: the list of (index, image array) tuples, and the sum of those arrays.
     """
-    image_list = []
-    summed_array = None
+    valid_extensions = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif")
+    file_paths = [
+        os.path.join(folder_path, f)
+        for f in sorted(os.listdir(folder_path))
+        if f.lower().endswith(valid_extensions)
+    ]
 
-    # Iterate through all files in the folder
-    for idx, file_name in enumerate(sorted(os.listdir(folder_path))):
-        file_path = os.path.join(folder_path, file_name)
+    # Load images as floats and create a stack
+    image_stack = np.array([np.array(Image.open(file_path), dtype=float) for file_path in file_paths])
 
-        # Open each image, convert to array, and append to the list
-        with Image.open(file_path) as img:
-            # img = img.convert("L")  # Convert to grayscale
-            image_array = np.array(img, dtype=float)
-            image_list.append((idx, image_array))
+    # Sum all the images in the stack to get a total for every pixel
+    summed_array = np.sum(image_stack, axis=0)
 
-            # Sum the arrays
-            if summed_array is None:
-                summed_array = image_array
-            else:
-                summed_array = summed_array + image_array
+    # Create a list of (index, image_array) tuples to track the image's original slice position in the stack
+    image_list = [(idx, image) for idx, image in enumerate(image_stack)]
 
     return image_list, summed_array
-
-
-def average_image_calculator(summed_img_array, image_list_len):
-    """
-    Calculate the average image from a summed array.
-    :param summed_img_array: summed image array.
-    :param image_list_len: number of images averaged.
-    :return: average image array as a float.
-    """
-    return summed_img_array / image_list_len
 
 
 def average_pixel_difference_calc(average_image, tuple_list):
@@ -64,34 +51,6 @@ def average_pixel_difference_calc(average_image, tuple_list):
     average_difference_scores_by_item = sorted(difference_scores, key=lambda ele: ele[1], reverse=True)
 
     return average_difference_scores_by_key, average_difference_scores_by_item
-
-
-def average_subset_conversion(average_array, image_list, remove_index):
-    """
-    Remove the most different image and recalculate the average image.
-    :param average_array: current average image array.
-    :param image_list: current list of (index, image array) tuples.
-    :param remove_index: index of the image to remove.
-    :return: new average image, updated image list.
-    """
-    list_len = len(image_list)
-    remove_image = None
-
-    # Remove the selected image
-    new_image_list = []
-    for idx, (img_idx, img_array) in enumerate(image_list):
-        if img_idx == remove_index:
-            remove_image = img_array
-        else:
-            new_image_list.append((img_idx, img_array))
-
-    # Recalculate the average
-    if remove_image is not None:
-        subset_avg = (average_array - (remove_image / list_len)) * (list_len / (list_len - 1))
-    else:
-        raise ValueError(f"Image with index {remove_index} not found.")
-
-    return subset_avg, new_image_list
 
 
 def training_slice_selector(dataset_path, desired_number_of_slices):
@@ -116,16 +75,15 @@ def training_slice_selector(dataset_path, desired_number_of_slices):
     if desired_number_of_slices >= len(img_tuple_list):
         raise ValueError("The dataset is not large enough to select this many slices")
 
-    avg_img = average_image_calculator(img_sum, len(img_tuple_list))
+    avg_img = img_sum / len(img_tuple_list)
     avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_tuple_list)
 
-    avg_diff_array = np.empty(len(img_tuple_list), dtype=object)
+    avg_diff_array = np.array([score for _, score in avg_diff])
 
     print("Initial scores for all images:")
     for img_index, score in avg_diff:
         img_num = img_index + 1
         print(f"Image {img_num}: Average pixel difference {score:.4f}")
-        avg_diff_array[img_index] = score
     print()
 
     # Order determines how many points on either side of the local extrema are considered to classify it as such
