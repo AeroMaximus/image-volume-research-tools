@@ -73,25 +73,19 @@ def training_slice_selector(dataset_path, desired_number_of_slices):
     avg_img = img_sum / img_vol_array.shape[0]
     avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_vol_array)
 
-    avg_diff_array = np.array([score for _, score in avg_diff])
-
-    print("Initial scores for all images:")
-    for img_index, score in avg_diff:
-        img_num = img_index + 1
-        print(f"Image {img_num}: Average pixel difference {score:.4f}")
-    print()
+    average_difference_array = np.array([score for _, score in avg_diff])
 
     # Order determines how many points on either side of the local extrema are considered to classify it as such
     order = 1
-    local_maxima = argrelextrema(avg_diff_array, np.greater, order=order)
-    local_minima = argrelextrema(avg_diff_array, np.less, order=order)
+    local_maxima = argrelextrema(average_difference_array, np.greater, order=order)
+    local_minima = argrelextrema(average_difference_array, np.less, order=order)
 
     # If the number of local extrema slices is greater than the number of desired slices, increase the order
     if (local_maxima[0].size + local_minima[0].size) > desired_number_of_slices:
         while (local_maxima[0].size + local_minima[0].size) > desired_number_of_slices:
             order += 1
-            temp_local_maxima = argrelextrema(avg_diff_array, np.greater, order=order)
-            temp_local_minima = argrelextrema(avg_diff_array, np.less, order=order)
+            temp_local_maxima = argrelextrema(average_difference_array, np.greater, order=order)
+            temp_local_minima = argrelextrema(average_difference_array, np.less, order=order)
 
             if (temp_local_maxima[0].size + temp_local_minima[0].size) < desired_number_of_slices:
                 # If the increase in order reduces the number of slices below the desired number, break the loop
@@ -114,7 +108,7 @@ def training_slice_selector(dataset_path, desired_number_of_slices):
     print("Total training slices returned: ", local_maxima[0].size + local_minima[0].size)
     print()
 
-    return local_maxima_slice_numbers, local_minima_slice_numbers
+    return local_maxima_slice_numbers, local_minima_slice_numbers, average_difference_array
 
 
 # Main script
@@ -124,8 +118,14 @@ folder_path = None
 training_data_quantity = 10
 
 # Input the dataset path and the number of images
-local_max, local_min = training_slice_selector(folder_path, training_data_quantity)
+local_max, local_min, avg_diff_array = training_slice_selector(folder_path, training_data_quantity)
 
 print(local_max)
 print(local_min)
+
+# print("Initial scores for all images:")
+# for img_index, score in enumerate(avg_diff_array):
+#     img_num = img_index + 1
+#     print(f"Image {img_num}: Average pixel difference {score:.4f}")
+# print()
 
