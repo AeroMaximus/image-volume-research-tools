@@ -11,7 +11,7 @@ def image_list_sum(folder_path):
     """
     Loads images, filters out non-image files, and calculates their sum.
     :param folder_path: path to the folder containing the images.
-    :return: the list of (index, image array) tuples, and the sum of those arrays.
+    :return: 3D float image_volume_array of the images stacked, and the summed_array of every image added together
     """
     valid_extensions = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif")
     file_paths = [
@@ -20,32 +20,27 @@ def image_list_sum(folder_path):
         if f.lower().endswith(valid_extensions)
     ]
 
-    # Load images as floats and create a stack
-    image_stack = np.array([np.array(Image.open(file_path), dtype=float) for file_path in file_paths])
+    # Load images as floats and create an image volume array
+    image_volume_array = np.array([np.array(Image.open(file_path), dtype=float) for file_path in file_paths])
 
     # Sum all the images in the stack to get a total for every pixel
-    summed_array = np.sum(image_stack, axis=0)
+    summed_array = np.sum(image_volume_array, axis=0)
 
-    # Create a list of (index, image_array) tuples to track the image's original slice position in the stack
-    image_list = [(idx, image) for idx, image in enumerate(image_stack)]
-
-    return image_list, summed_array
+    return image_volume_array, summed_array
 
 
-def average_pixel_difference_calc(average_image, tuple_list):
+def average_pixel_difference_calc(average_image, image_volume_array):
     """
     Calculate the average pixel difference between each image and the average image.
     :param average_image: the average image array.
-    :param tuple_list: list of (index, image array) tuples.
+    :param image_volume_array: 3D float image stack array.
     :return: list of (index, difference score), sorted by difference score in descending order.
     """
     total_pixels = average_image.size
-    difference_scores = []
 
-    for index, img_array in tuple_list:
-        diff = np.abs(img_array - average_image)
-        score = np.sum(diff) / total_pixels
-        difference_scores.append((index, score))
+    difference_array = np.abs(image_volume_array - average_image[np.newaxis, :, :])
+    scores = np.sum(difference_array, axis=(1, 2)) / total_pixels
+    difference_scores = list(enumerate(scores))
 
     average_difference_scores_by_key = sorted(difference_scores, key=lambda ele: ele[0])
     average_difference_scores_by_item = sorted(difference_scores, key=lambda ele: ele[1], reverse=True)
@@ -70,13 +65,13 @@ def training_slice_selector(dataset_path, desired_number_of_slices):
     print("Dataset folder path:", dataset_path)
 
     # Load images and calculate initial average
-    img_tuple_list, img_sum = image_list_sum(dataset_path)
+    img_vol_array, img_sum = image_list_sum(dataset_path)
 
-    if desired_number_of_slices >= len(img_tuple_list):
+    if desired_number_of_slices >= img_vol_array.shape[0]:
         raise ValueError("The dataset is not large enough to select this many slices")
 
-    avg_img = img_sum / len(img_tuple_list)
-    avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_tuple_list)
+    avg_img = img_sum / img_vol_array.shape[0]
+    avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_vol_array)
 
     avg_diff_array = np.array([score for _, score in avg_diff])
 
