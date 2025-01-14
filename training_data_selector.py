@@ -128,15 +128,27 @@ def training_slice_selector(dataset_path, desired_number_of_slices):
         avg_diff_array[img_index] = score
     print()
 
+    # Order determines how many points on either side of the local extrema are considered to classify it as such
     order = 1
     local_maxima = argrelextrema(avg_diff_array, np.greater, order=order)
     local_minima = argrelextrema(avg_diff_array, np.less, order=order)
 
+    # If the number of local extrema slices is greater than the number of desired slices, increase the order
     if (local_maxima[0].size + local_minima[0].size) > desired_number_of_slices:
         while (local_maxima[0].size + local_minima[0].size) > desired_number_of_slices:
             order += 1
-            local_maxima = argrelextrema(avg_diff_array, np.greater, order=order)
-            local_minima = argrelextrema(avg_diff_array, np.less, order=order)
+            temp_local_maxima = argrelextrema(avg_diff_array, np.greater, order=order)
+            temp_local_minima = argrelextrema(avg_diff_array, np.less, order=order)
+
+            if (temp_local_maxima[0].size + temp_local_minima[0].size) < desired_number_of_slices:
+                # If the increase in order reduces the number of slices below the desired number, break the loop
+                break
+            else:
+                # If the increase in order does not return fewer slices than desired, update the local extrema
+                local_maxima = temp_local_maxima
+                local_minima = temp_local_minima
+
+    # If the number of extrema slices returned at order 1 is less than desired, inform the user
     else:
         print("The desired number of slices could not be identified, please provide additional data")
 
@@ -144,7 +156,10 @@ def training_slice_selector(dataset_path, desired_number_of_slices):
     local_maxima_slice_numbers = local_maxima[0] + 1
     local_minima_slice_numbers = local_minima[0] + 1
 
-    print(f"Order required to select {training_data_quantity} training images: {order}")
+    # Inform the user how many images were requested and how many were identified by the closest order
+    print(f"Order required to select a minimum of {training_data_quantity} training image slices: {order}")
+    print("Total training slices returned: ", local_maxima[0].size + local_minima[0].size)
+    print()
 
     return local_maxima_slice_numbers, local_minima_slice_numbers
 
