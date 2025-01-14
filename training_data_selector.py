@@ -1,7 +1,10 @@
 import os
+import tkinter as tk
+from tkinter import filedialog
+
 import numpy as np
 from PIL import Image
-from discrete_local_extrema_finder import local_extrema
+from scipy.signal import argrelextrema
 
 
 def image_list_sum(folder_path):
@@ -60,7 +63,7 @@ def average_pixel_difference_calc(average_image, tuple_list):
     average_difference_scores_by_key = sorted(difference_scores, key=lambda ele: ele[0])
     average_difference_scores_by_item = sorted(difference_scores, key=lambda ele: ele[1], reverse=True)
 
-    return average_difference_scores_by_key, average_difference_scores_by_item # sorted(difference_scores, key=lambda x: x[1], reverse=True)
+    return average_difference_scores_by_key, average_difference_scores_by_item
 
 
 def average_subset_conversion(average_array, image_list, remove_index):
@@ -91,56 +94,70 @@ def average_subset_conversion(average_array, image_list, remove_index):
     return subset_avg, new_image_list
 
 
+def training_slice_selector(dataset_path, desired_number_of_slices):
+    """
+    Selects the desired number of image slices from the input dataset for training data using the local extrema of the
+    average pixel difference scores.
+    :param dataset_path: the path to the image stack dataset folder
+    :param desired_number_of_slices: how many image slices you want to identify for use as training data
+    :return: list of the local maxima and minima slice numbers totaling the desired number of training slices
+    """
+
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+
+    if dataset_path is None:
+        dataset_path = filedialog.askdirectory(title="Select dataset folder")
+    print("Dataset folder path:", dataset_path)
+
+    # Load images and calculate initial average
+    img_tuple_list, img_sum = image_list_sum(dataset_path)
+
+    if desired_number_of_slices >= len(img_tuple_list):
+        raise ValueError("The dataset is not large enough to select this many slices")
+
+    avg_img = average_image_calculator(img_sum, len(img_tuple_list))
+    avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_tuple_list)
+
+    avg_diff_array = np.empty(len(img_tuple_list), dtype=object)
+
+    print("Initial scores for all images:")
+    for img_index, score in avg_diff:
+        img_num = img_index + 1
+        print(f"Image {img_num}: Average pixel difference {score:.4f}")
+        avg_diff_array[img_index] = score
+    print()
+
+    order = 1
+    local_maxima = argrelextrema(avg_diff_array, np.greater, order=order)
+    local_minima = argrelextrema(avg_diff_array, np.less, order=order)
+
+    if (local_maxima[0].size + local_minima[0].size) > desired_number_of_slices:
+        while (local_maxima[0].size + local_minima[0].size) > desired_number_of_slices:
+            order += 1
+            local_maxima = argrelextrema(avg_diff_array, np.greater, order=order)
+            local_minima = argrelextrema(avg_diff_array, np.less, order=order)
+    else:
+        print("The desired number of slices could not be identified, please provide additional data")
+
+    # Converts the indices (starting at 0) to slice numbers (starting from 1)
+    local_maxima_slice_numbers = local_maxima[0] + 1
+    local_minima_slice_numbers = local_minima[0] + 1
+
+    print(f"Order required to select {training_data_quantity} training images: {order}")
+
+    return local_maxima_slice_numbers, local_minima_slice_numbers
+
+
 # Main script
-folder_path = r"path to your dataset image stack"
-# Number of training images you want identified
+folder_path = None
+
+# Number of training image slices you want identified from the dataset
 training_data_quantity = 10
 
-# Load images and calculate initial average
-img_tuple_list, img_sum = image_list_sum(folder_path)
-avg_img = average_image_calculator(img_sum, len(img_tuple_list))
-avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_tuple_list)
+# Input the dataset path and the number of images
+local_max, local_min = training_slice_selector(folder_path, training_data_quantity)
 
-avg_diff_array = np.empty(len(img_tuple_list), dtype=object)
-
-print("Initial scores for all images:")
-for img_index, score in avg_diff:
-    img_num = img_index + 1
-    print(f"Image {img_num}: Average pixel difference {score:.4f}")
-    avg_diff_array[img_index] = score
-print()
-
-order = 1
-local_maxima, local_minima = local_extrema(avg_diff_array, order)
-
-while (local_maxima[0].size + local_minima[0].size) > training_data_quantity:
-    order += 1
-    local_maxima, local_minima = local_extrema(avg_diff_array, order)
-
-# Converts the indices (starting at 0) to slice numbers (starting from 1)
-local_maxima_slice_numbers = local_maxima[0] + 1
-local_minima_slice_numbers = local_minima[0] + 1
-
-print(f"Order required to select {training_data_quantity} training images: {order}")
-
-print(local_maxima_slice_numbers)
-
-print(local_minima_slice_numbers)
-
-# # Iteratively remove the most different image
-# for iteration in range(training_data_quantity):
-#     avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_tuple_list)
-#     most_different_index = avg_diff_sorted[0][0]
-#
-#     if iteration == 0:
-#         print("Initial scores for all images:")
-#         for index, score in avg_diff:
-#             print(f"Image index {index}: Difference score {score:.4f}")
-#         print()
-#
-#     print(f"Iteration {iteration + 1}: Removing image index {most_different_index + 1}, score {avg_diff_sorted[0][1]:.4f}")
-#     avg_img, img_tuple_list = average_subset_conversion(avg_img, img_tuple_list, most_different_index)
-
-    # Next step should be to revise the code so that after the initial average pixel differences are calculated, graph
-    # them against the slice number and check the local extrema
+print(local_max)
+print(local_min)
 
