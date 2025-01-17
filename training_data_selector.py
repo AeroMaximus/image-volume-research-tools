@@ -48,7 +48,30 @@ def average_pixel_difference_calc(average_image, image_volume_array):
     return average_difference_scores_by_key, average_difference_scores_by_item
 
 
-def training_slice_selector(dataset_path, desired_number_of_slices):
+def local_extrema_by_mode(array, mode, order=1, index_offset=1):
+    """
+    Given a 1D array dataset and the type of extrema, this program
+    :param array: 1D dataset being analyzed
+    :param mode: "max", "min", or "both" determines which extrema values to look for
+    :param order: the number of points considered on either side of a potential local extrema
+    :param index_offset: the starting index for your data (default to 1 to match image stack numbering)
+    :return: total_extrema: total number of local extrema found, extrema: Dictionary with max and or min keys holding
+    tuples of the extrema indices
+    """
+    extrema = {}
+
+    if mode in ("max", "both"):
+        extrema["max"] = argrelextrema(array, np.greater, order=order)[0] + index_offset
+
+    if mode in ("min", "both"):
+        extrema["min"] = argrelextrema(array, np.less, order=order)[0] + index_offset
+
+    total_extrema = sum(len(indices) for indices in extrema.values())
+
+    return total_extrema, extrema
+
+
+def training_slice_selector(dataset_path, desired_number_of_slices, mode="both", idx_offset=1):
     """
     Selects the desired number of image slices from the input dataset for training data using the local extrema of the
     average pixel difference scores.
@@ -72,60 +95,47 @@ def training_slice_selector(dataset_path, desired_number_of_slices):
 
     avg_img = img_sum / img_vol_array.shape[0]
     avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_vol_array)
-
     average_difference_array = np.array([score for _, score in avg_diff])
 
     # Order determines how many points on either side of the local extrema are considered to classify it as such
     order = 1
-    local_maxima = argrelextrema(average_difference_array, np.greater, order=order)
-    local_minima = argrelextrema(average_difference_array, np.less, order=order)
+    total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
 
     # If the number of local extrema slices is greater than the number of desired slices, increase the order
-    if (local_maxima[0].size + local_minima[0].size) > desired_number_of_slices:
-        while (local_maxima[0].size + local_minima[0].size) > desired_number_of_slices:
+    if total_extrema > desired_number_of_slices:
+        while total_extrema > desired_number_of_slices:
             order += 1
-            temp_local_maxima = argrelextrema(average_difference_array, np.greater, order=order)
-            temp_local_minima = argrelextrema(average_difference_array, np.less, order=order)
+            temp_total_extrema, temp_local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
 
-            if (temp_local_maxima[0].size + temp_local_minima[0].size) < desired_number_of_slices:
+            if temp_total_extrema < desired_number_of_slices:
                 # If the increase in order reduces the number of slices below the desired number, break the loop
                 break
-            else:
-                # If the increase in order does not return fewer slices than desired, update the local extrema
-                local_maxima = temp_local_maxima
-                local_minima = temp_local_minima
+
+            # If the increase in order does not return fewer slices than desired, update the local extrema
+            total_extrema = temp_total_extrema
+            local_extrema = temp_local_extrema
+
+        # Inform the user how many images were requested and how many were identified by the closest order
+        print(f"Order required to select a minimum of {training_data_quantity} training image slices: {order}")
 
     # If the number of extrema slices returned at order 1 is less than desired, inform the user
     else:
-        print("The desired number of slices could not be identified, please provide additional data")
+        print(f"To select {training_data_quantity} slices for training data, please provide more data or change mode.")
 
-    # Converts the indices (starting at 0) to slice numbers (starting from 1)
-    local_maxima_slice_numbers = local_maxima[0] + 1
-    local_minima_slice_numbers = local_minima[0] + 1
-
-    # Inform the user how many images were requested and how many were identified by the closest order
-    print(f"Order required to select a minimum of {training_data_quantity} training image slices: {order}")
-    print("Total training slices returned: ", local_maxima[0].size + local_minima[0].size)
+    print("Total training slices returned: ", total_extrema)
     print()
 
-    return local_maxima_slice_numbers, local_minima_slice_numbers, average_difference_array
+    return local_extrema, average_difference_array
 
 
 # Main script
 folder_path = None
 
 # Number of training image slices you want identified from the dataset
-training_data_quantity = 10
+training_data_quantity = 3
 
 # Input the dataset path and the number of images
-local_max, local_min, avg_diff_array = training_slice_selector(folder_path, training_data_quantity)
+local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=1)
 
-print(local_max)
-print(local_min)
-
-# print("Initial scores for all images:")
-# for img_index, score in enumerate(avg_diff_array):
-#     img_num = img_index + 1
-#     print(f"Image {img_num}: Average pixel difference {score:.4f}")
-# print()
+print(local_extrema)
 
