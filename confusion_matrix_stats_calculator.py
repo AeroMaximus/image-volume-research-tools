@@ -54,16 +54,29 @@ def confusion_matrix_statistics(pos_label, roi_mask_input, print_labels, ground_
 
     if ground_truth_folder_path is None:
         ground_truth_folder_path = filedialog.askdirectory(title="Select the Ground Truth dataset folder")
-    print("Ground truth folder:", ground_truth_folder_path)
+
+    if ground_truth_folder_path:
+        print("Ground truth folder:", ground_truth_folder_path)
+    else:
+        raise ValueError("No ground truth dataset selected")
 
     if predicted_folder_path is None:
         predicted_folder_path = filedialog.askdirectory(title="Select the Predicted dataset folder")
-    print("Predicted folder:", predicted_folder_path)
+
+    if predicted_folder_path:
+        print("Predicted folder:", predicted_folder_path)
+    else:
+        raise ValueError("No predicted dataset selected")
 
     if roi_mask_input is True:
         if roi_mask_folder_path is None:
             roi_mask_folder_path = filedialog.askdirectory(title="Select the ROI mask dataset folder")
-        print("ROI Mask folder:", roi_mask_folder_path)
+
+        if roi_mask_folder_path:
+            print("ROI Mask folder:", roi_mask_folder_path)
+        else:
+            print("No ROI mask selected, calculations will include the entire dataset.")
+            roi_mask_input = False
 
     # Converts image stacks to image volumes
     ground_truth = image_stacker(ground_truth_folder_path)
