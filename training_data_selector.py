@@ -85,7 +85,11 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
 
     if dataset_path is None:
         dataset_path = filedialog.askdirectory(title="Select dataset folder")
-    print("Dataset folder path:", dataset_path)
+
+    if dataset_path:
+        print("Dataset folder path:", dataset_path)
+    else:
+        raise ValueError("No dataset path provided")
 
     # Load images and calculate initial average
     img_vol_array, img_sum = image_list_sum(dataset_path)
