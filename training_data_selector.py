@@ -112,6 +112,7 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
             temp_total_extrema, temp_local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
 
             if temp_total_extrema < desired_number_of_slices:
+                order -= 1
                 # If the increase in order reduces the number of slices below the desired number, break the loop
                 break
 
@@ -136,7 +137,7 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
 folder_path = None
 
 # Number of training image slices you want identified from the dataset
-training_data_quantity = 3
+training_data_quantity = 4
 
 # Input the dataset path and the number of images
 local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=1)
