@@ -4,7 +4,6 @@ import tkinter as tk
 from tkinter import filedialog
 
 import numpy as np
-import psutil
 from PIL import Image
 from scipy.signal import argrelextrema
 
@@ -24,11 +23,11 @@ def get_total_size(file_paths):
     return total_size
 
 
-def image_list_sum(folder_path):
+def image_list_avg(folder_path):
     """
-    Loads images, filters out non-image files, and calculates their sum.
+    Loads images, filters out non-image files, and calculates their average image.
     :param folder_path: path to the folder containing the images.
-    :return: 3D float image_volume_array of the images stacked, and the summed_array of every image added together
+    :return: list of file paths to each image, the average image as an array of values
     """
     valid_extensions = (".tiff", ".tif", ".png", ".jpg", ".jpeg", ".bmp")
     file_paths = [
@@ -39,42 +38,35 @@ def image_list_sum(folder_path):
 
     # Calculate size of dataset
     total_size = get_total_size(file_paths)
+    print(f"Dataset size: {total_size: .2f} GB")
 
-    # Get the virtual memory details
-    memory_info = psutil.virtual_memory()
-    available_ram = memory_info.available
+    summed_array = 0
 
-    if total_size >= available_ram:
-        print(f"Available RAM: {available_ram: .2f} GB")
-        print(f"Dataset size: {total_size: .2f} GB")
-        raise ValueError("Dataset is too large")
+    for file_path in file_paths:
+        summed_array += np.array(Image.open(file_path), dtype=float)
 
-    # Load images as floats and create an image volume array
-    image_volume_array = np.array([np.array(Image.open(file_path), dtype=float) for file_path in file_paths])
+    avg_img = summed_array / len(file_paths)
 
-    # Sum all the images in the stack to get a total for every pixel
-    summed_array = np.sum(image_volume_array, axis=0)
-
-    return image_volume_array, summed_array
+    return file_paths, avg_img
 
 
-def average_pixel_difference_calc(average_image, image_volume_array):
+def average_pixel_difference_calc(average_image, dataset_file_paths):
     """
     Calculate the average pixel difference between each image and the average image.
+    :param dataset_file_paths: list of file paths to images in dataset
     :param average_image: the average image array.
-    :param image_volume_array: 3D float image stack array.
-    :return: list of (index, difference score), sorted by difference score in descending order.
+    :return: list of difference scores
     """
     total_pixels = average_image.size
+    difference_scores = []
 
-    difference_array = np.abs(image_volume_array - average_image[np.newaxis, :, :])
-    scores = np.sum(difference_array, axis=(1, 2)) / total_pixels
-    difference_scores = list(enumerate(scores))
+    for file_path in dataset_file_paths:
+        image_array = np.array(Image.open(file_path))
+        difference_array = np.abs(image_array - average_image)
+        difference_score = np.sum(difference_array) / total_pixels
+        difference_scores.append(difference_score)
 
-    average_difference_scores_by_key = sorted(difference_scores, key=lambda ele: ele[0])
-    average_difference_scores_by_item = sorted(difference_scores, key=lambda ele: ele[1], reverse=True)
-
-    return average_difference_scores_by_key, average_difference_scores_by_item
+    return difference_scores
 
 
 def local_extrema_by_mode(array, mode, order=1, index_offset=1):
@@ -120,15 +112,14 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
     else:
         raise ValueError("No dataset path provided")
 
-    # Load images and calculate initial average
-    img_vol_array, img_sum = image_list_sum(dataset_path)
+    # Load images and calculate initial average image
+    file_paths, avg_img = image_list_avg(dataset_path)
+    number_of_images = len(file_paths)
 
-    if desired_number_of_slices >= img_vol_array.shape[0]:
+    if desired_number_of_slices >= number_of_images:
         raise ValueError("The dataset is not large enough to select this many slices")
 
-    avg_img = img_sum / img_vol_array.shape[0]
-    avg_diff, _ = average_pixel_difference_calc(avg_img, img_vol_array)
-    average_difference_array = np.array([score for _, score in avg_diff])
+    average_difference_array = np.array(average_pixel_difference_calc(avg_img, file_paths))
 
     # Order determines how many points on either side of the local extrema are considered to classify it as such
     order = 1
@@ -138,7 +129,7 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
     if total_extrema > desired_number_of_slices:
 
         # Start at the highest order possible and work down
-        order = math.floor(len(avg_diff)/2)
+        order = math.floor(number_of_images/2)
         total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
 
         # Loop ends when the order is the largest possible to give desired results
@@ -163,10 +154,10 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
 folder_path = None
 
 # Number of training image slices you want identified from the dataset
-training_data_quantity = 10
+training_data_quantity = 15
 
 # Input the dataset path and the number of images
-local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=95)
+local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=0)
 
 print(local_extrema)
 
