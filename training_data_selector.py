@@ -108,7 +108,7 @@ def local_extrema_by_mode(array, mode, order=1, index_offset=1):
     return total_extrema, extrema
 
 
-def training_slice_selector(dataset_path, desired_number_of_slices, mode="both", idx_offset=1):
+def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mode="both", idx_offset=1):
     """
     Selects the desired number of image slices from the input dataset for training data using the local extrema of the
     average pixel difference scores.
@@ -131,49 +131,93 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
     # Load images and calculate initial average image
     file_paths, avg_img = image_list_avg(dataset_path)
     number_of_images = len(file_paths)
-
-    if desired_number_of_slices >= number_of_images:
-        raise ValueError("The dataset is not large enough to select this many slices")
-
+    # Score each image
     average_difference_array = np.array(average_pixel_difference_calc(avg_img, file_paths))
 
-    # Order determines how many points on either side of the local extrema are considered to classify it as such
-    order = 1
-    total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
+    if desired_number_of_slices is None:
+        while True:
+            try:
+                print()
+                desired_number_of_slices = int(input("Enter the number of training images (or -1 to exit): "))
 
-    # If the number of local extrema slices is greater than the number of desired slices, increase the order
-    if total_extrema > desired_number_of_slices:
+                if desired_number_of_slices == -1:
+                    break
 
-        # Start at the highest order possible and work down
-        order = math.floor(number_of_images/2)
+                if desired_number_of_slices >= number_of_images:
+                    print("The dataset is not large enough to select this many slices. Try again.")
+                    continue
+
+                # Order determines how many points on either side of the local extrema are considered to classify it as such
+                order = 1
+                total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
+
+                # If the number of local extrema slices is greater than the number of desired slices, increase the order
+                if total_extrema > desired_number_of_slices:
+
+                    # Start at the highest order possible and work down
+                    order = math.floor(number_of_images / 2)
+                    total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order,
+                                                                         idx_offset)
+
+                    # Loop ends when the order is the largest possible to give desired results
+                    while total_extrema < desired_number_of_slices and order >= 1:
+                        order -= 1
+                        total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order,
+                                                                             idx_offset)
+
+                    # Inform the user how many images were requested and how many were identified by the closest order
+                    print(f"Order to select a minimum of {desired_number_of_slices} training image slices: {order}")
+
+                # If the number of extrema slices returned at order 1 is less than desired, inform the user
+                else:
+                    print(
+                        f"To select {desired_number_of_slices} slices for training data, please provide more data or change mode.")
+
+                print("Total training slices returned: ", total_extrema)
+                print()
+                print(f"Selected slices: {local_extrema}")
+
+            except ValueError:
+                print("Invalid input. Please enter an integer.")
+
+    else:
+        # Order determines how many points on either side of the local extrema are considered to classify it as such
+        order = 1
         total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
 
-        # Loop ends when the order is the largest possible to give desired results
-        while total_extrema < desired_number_of_slices and order >= 1:
-            order -= 1
-            total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
+        # If the number of local extrema slices is greater than the number of desired slices, increase the order
+        if total_extrema > desired_number_of_slices:
 
-        # Inform the user how many images were requested and how many were identified by the closest order
-        print(f"Order to select a minimum of {training_data_quantity} training image slices: {order}")
+            # Start at the highest order possible and work down
+            order = math.floor(number_of_images / 2)
+            total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order,
+                                                                 idx_offset)
 
-    # If the number of extrema slices returned at order 1 is less than desired, inform the user
-    else:
-        print(f"To select {training_data_quantity} slices for training data, please provide more data or change mode.")
+            # Loop ends when the order is the largest possible to give desired results
+            while total_extrema < desired_number_of_slices and order >= 1:
+                order -= 1
+                total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order,
+                                                                     idx_offset)
 
-    print("Total training slices returned: ", total_extrema)
-    print()
+        # If the number of extrema slices returned at order 1 is less than desired, inform the user
+        else:
+            print(f"To select {desired_number_of_slices} slices for training data, please provide more data or change mode.")
 
     return local_extrema, average_difference_array
 
 
 # Main script
+
+# Input the dataset path, enter None if you wish to browse for the directory
 folder_path = None
 
 # Number of training image slices you want identified from the dataset
-training_data_quantity = 15
+training_data_quantity = None # input None to be able to choose different numbers
 
-# Input the dataset path and the number of images
-local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=0)
+# Enter the index of the first image in the dataset
+starting_index = 0
 
-print(local_extrema)
+local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=starting_index)
+
+print(f"Final Slice Selection: {local_extrema}")
 
