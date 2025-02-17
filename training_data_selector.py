@@ -37,7 +37,7 @@ def image_list_avg(folder_path):
     ]
 
     # Calculate size of dataset
-    total_size = get_total_size(file_paths)
+    total_size = get_total_size(file_paths) / 1073741824
     print(f"Dataset size: {total_size: .2f} GB")
 
     summed_array = 0
@@ -62,7 +62,10 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
 
     for file_path in dataset_file_paths:
         image_array = np.array(Image.open(file_path))
-        difference_array = np.abs(image_array - average_image)
+        # difference_array = np.abs(image_array - average_image)
+
+        # Mean Square Error formula
+        difference_array = (image_array - average_image) ** 2
         difference_score = np.sum(difference_array) / total_pixels
         difference_scores.append(difference_score)
 
@@ -154,10 +157,10 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
 folder_path = None
 
 # Number of training image slices you want identified from the dataset
-training_data_quantity = 15
+training_data_quantity = 5
 
 # Input the dataset path and the number of images
-local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=0)
+local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=1)
 
 print(local_extrema)
 
