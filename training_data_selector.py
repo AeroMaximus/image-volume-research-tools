@@ -1,10 +1,27 @@
+import math
 import os
 import tkinter as tk
 from tkinter import filedialog
 
 import numpy as np
+import psutil
 from PIL import Image
 from scipy.signal import argrelextrema
+
+
+def get_total_size(file_paths):
+    """
+    Calculates the total size of a list of files
+    :param file_paths: list of files
+    :return: total size of the list
+    """
+    total_size = 0
+    for file_path in file_paths:
+        if os.path.isfile(file_path):
+            total_size += os.path.getsize(file_path)
+        else:
+            print(f"Warning: {file_path} is not a valid file.")
+    return total_size
 
 
 def image_list_sum(folder_path):
@@ -13,12 +30,24 @@ def image_list_sum(folder_path):
     :param folder_path: path to the folder containing the images.
     :return: 3D float image_volume_array of the images stacked, and the summed_array of every image added together
     """
-    valid_extensions = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif")
+    valid_extensions = (".tiff", ".tif", ".png", ".jpg", ".jpeg", ".bmp")
     file_paths = [
         os.path.join(folder_path, f)
         for f in sorted(os.listdir(folder_path))
         if f.lower().endswith(valid_extensions)
     ]
+
+    # Calculate size of dataset
+    total_size = get_total_size(file_paths)
+
+    # Get the virtual memory details
+    memory_info = psutil.virtual_memory()
+    available_ram = memory_info.available
+
+    if total_size >= available_ram:
+        print(f"Available RAM: {available_ram: .2f} GB")
+        print(f"Dataset size: {total_size: .2f} GB")
+        raise ValueError("Dataset is too large")
 
     # Load images as floats and create an image volume array
     image_volume_array = np.array([np.array(Image.open(file_path), dtype=float) for file_path in file_paths])
@@ -38,7 +67,7 @@ def average_pixel_difference_calc(average_image, image_volume_array):
     """
     total_pixels = average_image.size
 
-    difference_array = np.abs(image_volume_array ** 2 - average_image[np.newaxis, :, :] ** 2)
+    difference_array = np.abs(image_volume_array - average_image[np.newaxis, :, :])
     scores = np.sum(difference_array, axis=(1, 2)) / total_pixels
     difference_scores = list(enumerate(scores))
 
@@ -98,7 +127,7 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
         raise ValueError("The dataset is not large enough to select this many slices")
 
     avg_img = img_sum / img_vol_array.shape[0]
-    avg_diff, avg_diff_sorted = average_pixel_difference_calc(avg_img, img_vol_array)
+    avg_diff, _ = average_pixel_difference_calc(avg_img, img_vol_array)
     average_difference_array = np.array([score for _, score in avg_diff])
 
     # Order determines how many points on either side of the local extrema are considered to classify it as such
@@ -107,21 +136,18 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
 
     # If the number of local extrema slices is greater than the number of desired slices, increase the order
     if total_extrema > desired_number_of_slices:
-        while total_extrema > desired_number_of_slices:
-            order += 1
-            temp_total_extrema, temp_local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
 
-            if temp_total_extrema < desired_number_of_slices:
-                order -= 1
-                # If the increase in order reduces the number of slices below the desired number, break the loop
-                break
+        # Start at the highest order possible and work down
+        order = math.floor(len(avg_diff)/2)
+        total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
 
-            # If the increase in order does not return fewer slices than desired, update the local extrema
-            total_extrema = temp_total_extrema
-            local_extrema = temp_local_extrema
+        # Loop ends when the order is the largest possible to give desired results
+        while total_extrema < desired_number_of_slices and order >= 1:
+            order -= 1
+            total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
 
         # Inform the user how many images were requested and how many were identified by the closest order
-        print(f"Order required to select a minimum of {training_data_quantity} training image slices: {order}")
+        print(f"Order to select a minimum of {training_data_quantity} training image slices: {order}")
 
     # If the number of extrema slices returned at order 1 is less than desired, inform the user
     else:
@@ -137,10 +163,10 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
 folder_path = None
 
 # Number of training image slices you want identified from the dataset
-training_data_quantity = 15
+training_data_quantity = 10
 
 # Input the dataset path and the number of images
-local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=1)
+local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=95)
 
 print(local_extrema)
 
