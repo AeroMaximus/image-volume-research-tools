@@ -38,7 +38,7 @@ def average_pixel_difference_calc(average_image, image_volume_array):
     """
     total_pixels = average_image.size
 
-    difference_array = np.abs(image_volume_array - average_image[np.newaxis, :, :])
+    difference_array = np.abs(image_volume_array ** 2 - average_image[np.newaxis, :, :] ** 2)
     scores = np.sum(difference_array, axis=(1, 2)) / total_pixels
     difference_scores = list(enumerate(scores))
 
@@ -137,7 +137,7 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
 folder_path = None
 
 # Number of training image slices you want identified from the dataset
-training_data_quantity = 4
+training_data_quantity = 15
 
 # Input the dataset path and the number of images
 local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=1)
