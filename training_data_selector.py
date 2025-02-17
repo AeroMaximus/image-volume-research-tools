@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog
 
 import numpy as np
+import progressbar
 from PIL import Image
 from scipy.signal import argrelextrema
 
@@ -30,11 +31,10 @@ def image_list_avg(folder_path):
     :return: list of file paths to each image, the average image as an array of values
     """
     valid_extensions = (".tiff", ".tif", ".png", ".jpg", ".jpeg", ".bmp")
-    file_paths = [
-        os.path.join(folder_path, f)
-        for f in sorted(os.listdir(folder_path))
-        if f.lower().endswith(valid_extensions)
-    ]
+    file_paths = sorted(
+        [entry.path for entry in os.scandir(folder_path) if
+         entry.is_file() and entry.name.lower().endswith(tuple(valid_extensions))]
+    )
 
     # Calculate size of dataset
     total_size = get_total_size(file_paths) / 1073741824
@@ -42,8 +42,14 @@ def image_list_avg(folder_path):
 
     summed_array = 0
 
-    for file_path in file_paths:
+    print("Calculating Average Image")
+    summation_progress_bar = progressbar.ProgressBar(max_value=len(file_paths))
+
+    for f, file_path in enumerate(file_paths):
         summed_array += np.array(Image.open(file_path), dtype=float)
+        summation_progress_bar.update(f)
+
+    summation_progress_bar.finish()
 
     avg_img = summed_array / len(file_paths)
 
@@ -60,7 +66,10 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
     total_pixels = average_image.size
     difference_scores = []
 
-    for file_path in dataset_file_paths:
+    print("Calculating Difference Scores")
+    scoring_progress_bar = progressbar.ProgressBar(max_value=len(dataset_file_paths))
+
+    for f, file_path in enumerate(dataset_file_paths):
         image_array = np.array(Image.open(file_path))
         # difference_array = np.abs(image_array - average_image)
 
@@ -68,6 +77,10 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
         difference_array = (image_array - average_image) ** 2
         difference_score = np.sum(difference_array) / total_pixels
         difference_scores.append(difference_score)
+
+        scoring_progress_bar.update(f)
+
+    scoring_progress_bar.finish()
 
     return difference_scores
 
@@ -157,10 +170,10 @@ def training_slice_selector(dataset_path, desired_number_of_slices, mode="both",
 folder_path = None
 
 # Number of training image slices you want identified from the dataset
-training_data_quantity = 5
+training_data_quantity = 15
 
 # Input the dataset path and the number of images
-local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=1)
+local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=0)
 
 print(local_extrema)
 
