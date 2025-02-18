@@ -43,11 +43,12 @@ def image_list_avg(folder_path):
     summed_array = 0
 
     print("Calculating Average Image")
-    summation_progress_bar = progressbar.ProgressBar(max_value=len(file_paths))
+    summation_progress_bar = progressbar.ProgressBar(max_value=len(file_paths), redirect_stdout=True)
+    summation_progress_bar.update(0)
 
     for f, file_path in enumerate(file_paths):
         summed_array += np.array(Image.open(file_path), dtype=float)
-        summation_progress_bar.update(f)
+        summation_progress_bar.update(f+1)
 
     summation_progress_bar.finish()
 
@@ -67,7 +68,8 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
     difference_scores = []
 
     print("Calculating Difference Scores")
-    scoring_progress_bar = progressbar.ProgressBar(max_value=len(dataset_file_paths))
+    scoring_progress_bar = progressbar.ProgressBar(max_value=len(dataset_file_paths), redirect_stdout=True)
+    scoring_progress_bar.update(0)
 
     for f, file_path in enumerate(dataset_file_paths):
         image_array = np.array(Image.open(file_path))
@@ -78,7 +80,7 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
         difference_score = np.sum(difference_array) / total_pixels
         difference_scores.append(difference_score)
 
-        scoring_progress_bar.update(f)
+        scoring_progress_bar.update(f+1)
 
     scoring_progress_bar.finish()
 
@@ -207,6 +209,8 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
 
 
 # Main script
+"""Intended future features are changing the difference scoring method and having the option to export the identified
+ training data to a new directory"""
 
 # Input the dataset path, enter None if you wish to browse for the directory
 folder_path = None
@@ -215,7 +219,7 @@ folder_path = None
 training_data_quantity = None # input None to be able to choose different numbers
 
 # Enter the index of the first image in the dataset
-starting_index = 0
+starting_index = 1
 
 local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=starting_index)
 
