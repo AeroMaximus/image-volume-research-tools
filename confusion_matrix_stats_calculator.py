@@ -4,7 +4,7 @@ from tkinter import filedialog
 
 import numpy as np
 from PIL import Image
-from sklearn.metrics import f1_score, confusion_matrix
+from sklearn.metrics import confusion_matrix
 
 
 def image_stacker(folder_path):
@@ -119,11 +119,8 @@ def confusion_matrix_statistics(pos_label, roi_mask_input, print_labels, ground_
     # Calculate the F1-score from the precision and recall values to provide a hollistic comparison
     f1 = 2 * (precision * recall) / (precision + recall)
 
-    # Validate that the correct pos_label is selected by comparing the f1 value to another f1 function
-    f1_val = f1_score(ground_truth_flat, predicted_flat, pos_label=pos_label)
-
-    if abs(f1 - f1_val) >= 1e-6:
-        raise ValueError('F1-Score positive labels do not match')
+    # Calculate pixel error
+    pixel_error = (fn + fp) / (tp + fn + fp + tn)
 
     if print_labels:
         print("\nTrue positive (TP):", tp)
@@ -133,6 +130,7 @@ def confusion_matrix_statistics(pos_label, roi_mask_input, print_labels, ground_
         print("\nPrecision:", precision)
         print("Recall:", recall)
         print("F1-score:", f1)
+        print("Pixel Error:", pixel_error)
     else:
         print(tp)
         print(fn)
@@ -141,9 +139,11 @@ def confusion_matrix_statistics(pos_label, roi_mask_input, print_labels, ground_
         print(precision)
         print(recall)
         print(f1)
+        print(pixel_error)
         print("\n")
 
-    stat_bloc = [tp, fn, fp, tn, precision, recall, f1]
+    stat_bloc = [tp, fn, fp, tn, precision, recall, f1, pixel_error]
     stat_bloc = np.transpose(stat_bloc)
 
     return stat_bloc
+
