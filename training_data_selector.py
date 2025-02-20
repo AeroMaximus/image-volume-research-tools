@@ -110,10 +110,13 @@ def local_extrema_by_mode(array, mode, order=1, index_offset=1):
     return total_extrema, extrema
 
 
-def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mode="both", idx_offset=1):
+def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mode="both", idx_offset=None):
     """
     Selects the desired number of image slices from the input dataset for training data using the local extrema of the
     average pixel difference scores.
+    :param idx_offset: the index your dataset begins numbering at (typically either 0 or 1 unless using a subset)
+    :param mode: 'max' to identify the most unique images, 'min' for the least unique images, or 'both' for a
+                combination of the two
     :param dataset_path: the path to the image stack dataset folder
     :param desired_number_of_slices: how many image slices you want to identify for use as training data
     :return: list of the local maxima and minima slice numbers totaling the desired number of training slices
@@ -139,19 +142,39 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
     if desired_number_of_slices is None:
         while True:
             try:
-                print()
-                desired_number_of_slices = int(input("Enter the number of training images (or -1 to exit): "))
+                if idx_offset is None:
+                    try:
+                        print()
+                        idx_offset = int(input("Starting index not specified, please enter it now: "))
+                    except:
+                        print()
+                        print("Invalid index, please enter an integer")
+                        continue
 
+                print()
+                desired_number_of_slices = int(input("Enter the number of training images (or 0 to change mode, -1 to exit): "))
+
+                if desired_number_of_slices == 0:
+                    print()
+                    while True:
+                        mode = input("Enter 'max' to identify the most unique images, 'min' for the least unique images, "
+                                        "or 'both' for a combination of the two: ")
+                        if mode in ('max', 'min', 'both'):
+                            break
+                        else:
+                            print("\nInvalid mode\n")
+                    continue
+
+                # Order determines how many points on either side of the local extrema are considered to classify it as such
+                order = 1
+                total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order,
+                                                                     idx_offset)
                 if desired_number_of_slices == -1:
                     break
 
                 if desired_number_of_slices >= number_of_images:
                     print("The dataset is not large enough to select this many slices. Try again.")
                     continue
-
-                # Order determines how many points on either side of the local extrema are considered to classify it as such
-                order = 1
-                total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order, idx_offset)
 
                 # If the number of local extrema slices is greater than the number of desired slices, increase the order
                 if total_extrema > desired_number_of_slices:
@@ -215,11 +238,11 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
 # Input the dataset path, enter None if you wish to browse for the directory
 folder_path = None
 
-# Number of training image slices you want identified from the dataset
-training_data_quantity = None # input None to be able to choose different numbers
+# Number of training image slices you want identified from the dataset, enter None to be prompted
+training_data_quantity = None
 
-# Enter the index of the first image in the dataset
-starting_index = 1
+# Enter the index of the first image in the dataset, enter None to be prompted
+starting_index = None
 
 local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=starting_index)
 
