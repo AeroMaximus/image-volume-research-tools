@@ -136,20 +136,27 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
     # Load images and calculate initial average image
     file_paths, avg_img = image_list_avg(dataset_path)
     number_of_images = len(file_paths)
+
     # Score each image
     average_difference_array = np.array(average_pixel_difference_calc(avg_img, file_paths))
+    mean_score = np.mean(average_difference_array)
+    median_score = np.median(average_difference_array)
+
+    while True:
+        if idx_offset is None:
+            try:
+                print()
+                idx_offset = int(input("Starting index not specified, please enter it now: "))
+            except:
+                print()
+                print("Invalid index, please enter an integer")
+                continue
+        else:
+            break
 
     if desired_number_of_slices is None:
         while True:
             try:
-                if idx_offset is None:
-                    try:
-                        print()
-                        idx_offset = int(input("Starting index not specified, please enter it now: "))
-                    except:
-                        print()
-                        print("Invalid index, please enter an integer")
-                        continue
 
                 print()
                 desired_number_of_slices = int(input("Enter the number of training images (or 0 to change mode, -1 to exit): "))
@@ -165,12 +172,16 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
                             print("\nInvalid mode\n")
                     continue
 
+                if desired_number_of_slices == -1:
+                    if 'local_extrema' not in locals():
+                        total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, 1,
+                                                                             idx_offset)
+                    break
+
                 # Order determines how many points on either side of the local extrema are considered to classify it as such
                 order = 1
                 total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order,
                                                                      idx_offset)
-                if desired_number_of_slices == -1:
-                    break
 
                 if desired_number_of_slices >= number_of_images:
                     print("The dataset is not large enough to select this many slices. Try again.")
@@ -230,21 +241,22 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
 
     return local_extrema, average_difference_array
 
+def main():
+    """Intended future features are changing the difference scoring method and having the option to export the identified
+     training data to a new directory"""
 
-# Main script
-"""Intended future features are changing the difference scoring method and having the option to export the identified
- training data to a new directory"""
+    # Input the dataset path, enter None if you wish to browse for the directory
+    folder_path = None
 
-# Input the dataset path, enter None if you wish to browse for the directory
-folder_path = None
+    # Number of training image slices you want identified from the dataset, enter None to be prompted
+    training_data_quantity = None
 
-# Number of training image slices you want identified from the dataset, enter None to be prompted
-training_data_quantity = None
+    # Enter the index of the first image in the dataset, enter None to be prompted
+    starting_index = None
 
-# Enter the index of the first image in the dataset, enter None to be prompted
-starting_index = None
+    local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=starting_index)
 
-local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=starting_index)
+    print(f"Final Slice Selection: {local_extrema}")
 
-print(f"Final Slice Selection: {local_extrema}")
-
+if __name__ == '__main__':
+    main()
