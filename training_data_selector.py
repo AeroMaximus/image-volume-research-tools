@@ -3,6 +3,7 @@ import os
 import tkinter as tk
 from tkinter import filedialog
 
+import matplotlib.pyplot as plt
 import numpy as np
 import progressbar
 from PIL import Image
@@ -86,6 +87,29 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
 
     return difference_scores
 
+def img_diff_plot(average_difference_array, idx_offset, number_of_images):
+    mean_score = np.mean(average_difference_array)
+    median_score = np.median(average_difference_array)
+
+    x = np.arange(idx_offset, idx_offset + number_of_images)
+    plt.plot(x, average_difference_array, label='Average MSE per slice', marker='o')
+
+    # Adding mean and median lines
+    plt.axhline(mean_score, color='r', linestyle='--', label=f'Mean: {mean_score:.2f}')
+    plt.axhline(median_score, color='g', linestyle='-.', label=f'Median: {median_score:.2f}')
+
+    # Adding labels and title
+    plt.xlabel('Slice')
+    plt.ylabel('Average MSE')
+    plt.legend()
+
+    # Add major grid lines
+    plt.grid(which='major', linestyle='-', linewidth='0.5', color='black')
+
+    # Add minor grid lines
+    plt.minorticks_on()
+    plt.grid(which='minor', linestyle=':', linewidth='0.5', color='gray')
+    plt.show()
 
 def local_extrema_by_mode(array, mode, order=1, index_offset=1):
     """
@@ -110,7 +134,7 @@ def local_extrema_by_mode(array, mode, order=1, index_offset=1):
     return total_extrema, extrema
 
 
-def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mode="both", idx_offset=None):
+def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mode="both", idx_offset=0, plot_prev=False):
     """
     Selects the desired number of image slices from the input dataset for training data using the local extrema of the
     average pixel difference scores.
@@ -139,8 +163,6 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
 
     # Score each image
     average_difference_array = np.array(average_pixel_difference_calc(avg_img, file_paths))
-    mean_score = np.mean(average_difference_array)
-    median_score = np.median(average_difference_array)
 
     while True:
         if idx_offset is None:
@@ -153,6 +175,9 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
                 continue
         else:
             break
+
+    if plot_prev is True:
+        img_diff_plot(average_difference_array, idx_offset, number_of_images)
 
     if desired_number_of_slices is None:
         while True:
@@ -239,22 +264,29 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
         else:
             print(f"To select {desired_number_of_slices} slices for training data, please provide more data or change mode.")
 
+    slices = np.arange(idx_offset, idx_offset+number_of_images)
+    average_difference_array = np.column_stack((slices, average_difference_array))
+
     return local_extrema, average_difference_array
 
 def main():
     """Intended future features are changing the difference scoring method and having the option to export the identified
      training data to a new directory"""
 
-    # Input the dataset path, enter None if you wish to browse for the directory
+    # Input the dataset path, enter None if you wish to browse for the directory (None by default)
     folder_path = None
 
-    # Number of training image slices you want identified from the dataset, enter None to be prompted
+    # Number of training image slices you want identified from the dataset, enter None to be prompted (None by default)
     training_data_quantity = None
 
-    # Enter the index of the first image in the dataset, enter None to be prompted
+    # Enter the index of the first image in the dataset, enter None to be prompted (0 by default)
     starting_index = None
 
-    local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both", idx_offset=starting_index)
+    # Change whether you want a preview of the difference scores vs image slices to appear (False by default)
+    plot_preview = False
+
+    local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both",
+                                                            idx_offset=starting_index, plot_prev=plot_preview)
 
     print(f"Final Slice Selection: {local_extrema}")
 

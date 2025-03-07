@@ -3,3 +3,4 @@ pillow~=11.0.0
 scipy~=1.14.1
 scikit-learn~=1.5.2
 progressbar2~=4.5.0
+matplotlib~=3.10.1
