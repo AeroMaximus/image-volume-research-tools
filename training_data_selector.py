@@ -1,5 +1,6 @@
 import math
 import os
+import time
 import tkinter as tk
 from tkinter import filedialog
 
@@ -44,6 +45,7 @@ def image_list_avg(folder_path):
     summed_array = 0
 
     print("Calculating Average Image")
+    time.sleep(0.01)
     summation_progress_bar = progressbar.ProgressBar(max_value=len(file_paths), redirect_stdout=True)
     summation_progress_bar.update(0)
 
@@ -52,6 +54,7 @@ def image_list_avg(folder_path):
         summation_progress_bar.update(f+1)
 
     summation_progress_bar.finish()
+    time.sleep(0.01)
 
     avg_img = summed_array / len(file_paths)
 
@@ -69,6 +72,7 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
     difference_scores = []
 
     print("Calculating Difference Scores")
+    time.sleep(0.01)
     scoring_progress_bar = progressbar.ProgressBar(max_value=len(dataset_file_paths), redirect_stdout=True)
     scoring_progress_bar.update(0)
 
@@ -84,6 +88,7 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
         scoring_progress_bar.update(f+1)
 
     scoring_progress_bar.finish()
+    time.sleep(0.01)
 
     return difference_scores
 
@@ -134,7 +139,7 @@ def local_extrema_by_mode(array, mode, order=1, index_offset=1):
     return total_extrema, extrema
 
 
-def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mode="both", idx_offset=0, plot_prev=False):
+def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mode="both", idx_offset=0):
     """
     Selects the desired number of image slices from the input dataset for training data using the local extrema of the
     average pixel difference scores.
@@ -176,15 +181,19 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
         else:
             break
 
-    if plot_prev is True:
-        img_diff_plot(average_difference_array, idx_offset, number_of_images)
-
     if desired_number_of_slices is None:
         while True:
             try:
 
                 print()
-                desired_number_of_slices = int(input("Enter the number of training images (or 0 to change mode, -1 to exit): "))
+                desired_number_of_slices = input("Enter the number of training images (or 0 to change mode, -1 to exit,"
+                                                 " or 'p' to preview a plot of the difference scores): ")
+
+                if desired_number_of_slices == 'p':
+                    img_diff_plot(average_difference_array, idx_offset, number_of_images)
+                    continue
+
+                desired_number_of_slices = int(desired_number_of_slices)
 
                 if desired_number_of_slices == 0:
                     print()
@@ -270,8 +279,8 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
     return local_extrema, average_difference_array
 
 def main():
-    """Intended future features are changing the difference scoring method and having the option to export the identified
-     training data to a new directory"""
+    """Intended future features are changing the difference scoring method and having the option to export the
+    identified training data to a new directory"""
 
     # Input the dataset path, enter None if you wish to browse for the directory (None by default)
     folder_path = None
@@ -282,11 +291,8 @@ def main():
     # Enter the index of the first image in the dataset, enter None to be prompted (0 by default)
     starting_index = None
 
-    # Change whether you want a preview of the difference scores vs image slices to appear (False by default)
-    plot_preview = False
-
     local_extrema, avg_diff_array = training_slice_selector(folder_path, training_data_quantity, mode="both",
-                                                            idx_offset=starting_index, plot_prev=plot_preview)
+                                                            idx_offset=starting_index)
 
     print(f"Final Slice Selection: {local_extrema}")
 
