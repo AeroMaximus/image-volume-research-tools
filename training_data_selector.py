@@ -68,34 +68,57 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
     :param average_image: the average image array.
     :return: list of difference scores
     """
+    # Get the total number of pixels for future averaging of the MSE
     total_pixels = average_image.size
+
+    # Initialize the list of image scores (MSE values)
     difference_scores = []
 
     print("Calculating Difference Scores")
+
+    # Pause to help the progress bar display correctly
     time.sleep(0.01)
+
+    # Initialize the progress bar for the scoring of images
     scoring_progress_bar = progressbar.ProgressBar(max_value=len(dataset_file_paths), redirect_stdout=True)
-    scoring_progress_bar.update(0)
+    scoring_progress_bar.update(0) # Ensures the bar starts at zero
 
     for f, file_path in enumerate(dataset_file_paths):
+
+        # Open anc convert each image into a numpy array of intensity values
         image_array = np.array(Image.open(file_path))
-        # difference_array = np.abs(image_array - average_image)
 
         # Mean Square Error formula
         difference_array = (image_array - average_image) ** 2
+
+        # Average the MSE of the image pixels compared to the average image
         difference_score = np.sum(difference_array) / total_pixels
         difference_scores.append(difference_score)
 
+        # Update the progress bar
         scoring_progress_bar.update(f+1)
 
+    # Close the progress bar and pause to prevent the progress bar bleeding into the next line
     scoring_progress_bar.finish()
     time.sleep(0.01)
 
     return difference_scores
 
-def img_diff_plot(average_difference_array, idx_offset, number_of_images):
+def img_diff_plot(average_difference_array, idx_offset):
+    """
+    Plots the average MSE per slice of a serial dataset using matplotlib
+    :param average_difference_array: The 1D array of scores per slice
+    :param idx_offset: the starting index
+    :return: Plot
+    """
+    print("Note: you will need to exit the plot preview before entering a new number.")
+
+    # Calculate the average difference scores
     mean_score = np.mean(average_difference_array)
     median_score = np.median(average_difference_array)
 
+    # Generate the x axis values
+    number_of_images = len(average_difference_array)
     x = np.arange(idx_offset, idx_offset + number_of_images)
     plt.plot(x, average_difference_array, label='Average MSE per slice', marker='o')
 
@@ -169,8 +192,10 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
     # Score each image
     average_difference_array = np.array(average_pixel_difference_calc(avg_img, file_paths))
 
-    while True:
-        if idx_offset is None:
+    # If unentered, prompt the user to enter the starting index of the dataset, only accepting integer values
+    if idx_offset is None:
+        while True:
+
             try:
                 print()
                 idx_offset = int(input("Starting index not specified, please enter it now: "))
@@ -178,9 +203,10 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
                 print()
                 print("Invalid index, please enter an integer")
                 continue
-        else:
-            break
+            else:
+                break
 
+    # If unentered, prompt the user to enter the number of training data slices they want
     if desired_number_of_slices is None:
         while True:
             try:
@@ -190,7 +216,7 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
                                                  " or 'p' to preview a plot of the difference scores): ")
 
                 if desired_number_of_slices == 'p':
-                    img_diff_plot(average_difference_array, idx_offset, number_of_images)
+                    img_diff_plot(average_difference_array, idx_offset)
                     continue
 
                 desired_number_of_slices = int(desired_number_of_slices)
