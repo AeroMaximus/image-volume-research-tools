@@ -68,8 +68,6 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
     :param average_image: the average image array.
     :return: list of difference scores
     """
-    # Get the total number of pixels for future averaging of the MSE
-    total_pixels = average_image.size
 
     # Initialize the list of image scores (MSE values)
     difference_scores = []
@@ -88,11 +86,8 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
         # Open anc convert each image into a numpy array of intensity values
         image_array = np.array(Image.open(file_path))
 
-        # Mean Square Error formula
-        difference_array = (image_array - average_image) ** 2
-
-        # Average the MSE of the image pixels compared to the average image
-        difference_score = np.sum(difference_array) / total_pixels
+        # MSE of the image pixels compared to the average image
+        difference_score = np.mean((image_array - average_image) ** 2)
         difference_scores.append(difference_score)
 
         # Update the progress bar
@@ -106,7 +101,7 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
 
 def img_diff_plot(average_difference_array, idx_offset):
     """
-    Plots the average MSE per slice of a serial dataset using matplotlib
+    Plots the MSE per slice of a serial dataset using matplotlib
     :param average_difference_array: The 1D array of scores per slice
     :param idx_offset: the starting index
     :return: Plot
@@ -120,7 +115,7 @@ def img_diff_plot(average_difference_array, idx_offset):
     # Generate the x axis values
     number_of_images = len(average_difference_array)
     x = np.arange(idx_offset, idx_offset + number_of_images)
-    plt.plot(x, average_difference_array, label='Average MSE per slice', marker='o')
+    plt.plot(x, average_difference_array, label='MSE per slice', marker='.')
 
     # Adding mean and median lines
     plt.axhline(mean_score, color='r', linestyle='--', label=f'Mean: {mean_score:.2f}')
@@ -128,7 +123,7 @@ def img_diff_plot(average_difference_array, idx_offset):
 
     # Adding labels and title
     plt.xlabel('Slice')
-    plt.ylabel('Average MSE')
+    plt.ylabel('MSE to Average Image')
     plt.legend()
 
     # Add major grid lines
