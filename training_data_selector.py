@@ -81,12 +81,14 @@ def image_list_avg(folder_path):
 
     return file_paths, avg_img
 
+def array_mse_calc(array1, array2):
+    return np.mean((array1-array2) ** 2)
 
-def average_pixel_difference_calc(average_image, dataset_file_paths):
+def average_pixel_difference_calc(average_image_array, dataset_file_paths):
     """
     Calculate the average pixel difference between each image and the average image.
     :param dataset_file_paths: list of file paths to images in dataset
-    :param average_image: the average image array.
+    :param average_image_array: the average image array.
     :return: list of difference scores
     """
 
@@ -108,7 +110,7 @@ def average_pixel_difference_calc(average_image, dataset_file_paths):
         image_array = np.array(Image.open(file_path))
 
         # MSE of the image pixels compared to the average image
-        difference_score = np.mean((image_array - average_image) ** 2)
+        difference_score = array_mse_calc(image_array,average_image_array)
         difference_scores.append(difference_score)
 
         # Update the progress bar
