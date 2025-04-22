@@ -25,6 +25,30 @@ def get_total_size(file_paths):
             print(f"Warning: {file_path} is not a valid file.")
     return total_size
 
+def collect_file_paths(path, accepted_extensions=('.tiff',)):
+    """
+    Collect paths to files from a file or directory based on their extension.
+
+    :param path: Path to a file or directory.
+    :param accepted_extensions: Tuple of accepted file extensions.
+    :return: List of file paths matching accepted extensions.
+    """
+    if os.path.isfile(path):
+        if path.endswith(accepted_extensions):
+            return [path]
+        else:
+            raise ValueError(f"File '{path}' does not have an accepted extension: {accepted_extensions}")
+    elif os.path.isdir(path):
+        file_paths = []
+        for root, _, files in os.walk(path):
+            for f in files:
+                if f.endswith(accepted_extensions):
+                    file_paths.append(os.path.join(root, f))
+        if not file_paths:
+            raise ValueError(f"No files with extensions {accepted_extensions} found in directory: {path}")
+        return file_paths
+    else:
+        raise ValueError(f"Provided path is neither a valid file nor directory containing one: {path}")
 
 def image_list_avg(folder_path):
     """
@@ -33,10 +57,7 @@ def image_list_avg(folder_path):
     :return: list of file paths to each image, the average image as an array of values
     """
     valid_extensions = (".tiff", ".tif", ".png", ".jpg", ".jpeg", ".bmp")
-    file_paths = sorted(
-        [entry.path for entry in os.scandir(folder_path) if
-         entry.is_file() and entry.name.lower().endswith(tuple(valid_extensions))]
-    )
+    file_paths = collect_file_paths(folder_path, valid_extensions)
 
     # Calculate size of dataset
     total_size = get_total_size(file_paths) / 1073741824
