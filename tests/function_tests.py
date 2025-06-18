@@ -80,6 +80,10 @@ def test_collect_file_paths(tmp_path):
 
     assert all_paths == expected_all_paths
 
+    # Test directory without any accepted extensions
+    with pytest.raises(ValueError):
+        collect_file_paths(tmp_path, accepted_extensions=".wav")
+
     # Single valid file path
     path_pass = collect_file_paths(str(tmp_path / "file1.txt"), accepted_extensions=('.txt',))
     assert path_pass == [str(tmp_path / "file1.txt")]
