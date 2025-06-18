@@ -1,14 +1,13 @@
 import math
 import os
-import time
 import tkinter as tk
 from tkinter import filedialog
 
 import matplotlib.pyplot as plt
 import numpy as np
-import progressbar
 from PIL import Image
 from scipy.signal import argrelextrema
+from tqdm import tqdm
 
 
 def get_total_size(file_paths):
@@ -65,17 +64,12 @@ def image_list_avg(folder_path):
 
     summed_array = 0
 
-    print("Calculating Average Image")
-    time.sleep(0.01)
-    summation_progress_bar = progressbar.ProgressBar(max_value=len(file_paths), redirect_stdout=True)
-    summation_progress_bar.update(0)
+    for f, file_path in tqdm(enumerate(file_paths),
+                             total=len(file_paths),
+                             desc="Calculating Average Image",
+                             unit="Image"):
 
-    for f, file_path in enumerate(file_paths):
         summed_array += np.array(Image.open(file_path), dtype=float)
-        summation_progress_bar.update(f+1)
-
-    summation_progress_bar.finish()
-    time.sleep(0.01)
 
     avg_img = summed_array / len(file_paths)
 
@@ -95,16 +89,10 @@ def average_pixel_difference_calc(average_image_array, dataset_file_paths):
     # Initialize the list of image scores (MSE values)
     difference_scores = []
 
-    print("Calculating Difference Scores")
-
-    # Pause to help the progress bar display correctly
-    time.sleep(0.01)
-
-    # Initialize the progress bar for the scoring of images
-    scoring_progress_bar = progressbar.ProgressBar(max_value=len(dataset_file_paths), redirect_stdout=True)
-    scoring_progress_bar.update(0) # Ensures the bar starts at zero
-
-    for f, file_path in enumerate(dataset_file_paths):
+    for f, file_path in tqdm(enumerate(dataset_file_paths),
+                             total=len(dataset_file_paths),
+                             desc="Calculating Difference Scores",
+                             unit="Image"):
 
         # Open anc convert each image into a numpy array of intensity values
         image_array = np.array(Image.open(file_path))
@@ -112,13 +100,6 @@ def average_pixel_difference_calc(average_image_array, dataset_file_paths):
         # MSE of the image pixels compared to the average image
         difference_score = array_mse_calc(image_array,average_image_array)
         difference_scores.append(difference_score)
-
-        # Update the progress bar
-        scoring_progress_bar.update(f+1)
-
-    # Close the progress bar and pause to prevent the progress bar bleeding into the next line
-    scoring_progress_bar.finish()
-    time.sleep(0.01)
 
     return difference_scores
 
@@ -242,8 +223,8 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
                 if desired_number_of_slices == 0:
                     print()
                     while True:
-                        mode = input("Enter 'max' to identify the most unique images, 'min' for the least unique images, "
-                                        "or 'both' for a combination of the two: ")
+                        mode = input("Enter 'max' to identify the most unique images, 'min' for the least unique "
+                                     "images, or 'both' for a combination of the two: ")
                         if mode in ('max', 'min', 'both'):
                             break
                         else:
@@ -256,7 +237,7 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
                                                                              idx_offset)
                     break
 
-                # Order determines how many points on either side of the local extrema are considered to classify it as such
+                # Order determines how many points on either side of the local extrema are considered to classify it
                 order = 1
                 total_extrema, local_extrema = local_extrema_by_mode(average_difference_array, mode, order,
                                                                      idx_offset)
@@ -285,7 +266,8 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
                 # If the number of extrema slices returned at order 1 is less than desired, inform the user
                 else:
                     print(
-                        f"To select {desired_number_of_slices} slices for training data, please provide more data or change mode.")
+                        f"To select {desired_number_of_slices} slices for training data, "
+                        f"please provide more data or change mode.")
 
                 print("Total training slices returned: ", total_extrema)
                 print()
@@ -315,7 +297,8 @@ def training_slice_selector(dataset_path=None, desired_number_of_slices=None, mo
 
         # If the number of extrema slices returned at order 1 is less than desired, inform the user
         else:
-            print(f"To select {desired_number_of_slices} slices for training data, please provide more data or change mode.")
+            print(f"To select {desired_number_of_slices} slices for training data, "
+                  f"please provide more data or change mode.")
 
     slices = np.arange(idx_offset, idx_offset+number_of_images)
     average_difference_array = np.column_stack((slices, average_difference_array))
