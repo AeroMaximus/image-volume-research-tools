@@ -1,6 +1,5 @@
 import pytest
-
-from training_data_selector import get_total_size, collect_file_paths
+from Source.Tools.training_data_selector import get_total_size, collect_file_paths
 
 def test_get_total_size(tmp_path, capsys):
     # Create test files with known content
@@ -61,7 +60,7 @@ def test_collect_file_paths(tmp_path):
         str(double_nested_dir / "double_nested2.txt")
     ]
 
-    assert txt_paths == expected_txt_paths
+    assert sorted(txt_paths) == sorted(expected_txt_paths)
 
     # Test the collection of multiple extensions
     all_paths = collect_file_paths(tmp_path, accepted_extensions=('.txt', '.md'))
@@ -78,7 +77,7 @@ def test_collect_file_paths(tmp_path):
         str(double_nested_dir / "ignore.md")
     ]
 
-    assert all_paths == expected_all_paths
+    assert sorted(all_paths) == sorted(expected_all_paths)
 
     # Test directory without any accepted extensions
     with pytest.raises(ValueError):
