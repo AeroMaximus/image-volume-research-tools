@@ -1,4 +1,8 @@
 import pytest
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from Source.Tools.training_data_selector import get_total_size, collect_file_paths
 
 def test_get_total_size(tmp_path, capsys):
